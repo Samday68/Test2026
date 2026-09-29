@@ -1,0 +1,1297 @@
+<!DOCTYPE html>
+<html lang="en" style="overflow:hidden;">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>VOLATILITY ANALYZER V.2.0</title>
+  <link rel="manifest" href="manifest.json">
+
+  <style>
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html { overflow: auto; height: 100%; }
+
+    body {
+      font-family: sans-serif;
+      background: #1a1a1a;
+      color: #fff;
+      margin: 0;
+      padding: 4px 3px;
+      transition: background-color 0.3s, color 0.3s;
+      overflow-x: auto;
+      overflow-y: auto;
+    }
+    body.day-mode { background: #fff; color: #000; }
+
+    #mainContainer { display: flex; gap: 4px; max-width: 100%; margin: 0 auto; overflow: visible; }
+    #leftSection { flex: 1; min-width: 0; max-width: 100%; z-index: 2; position: relative; }
+
+    @media (max-width: 768px) {
+      #mainContainer { gap: 3px; }
+      #leftSection { flex: 1; min-width: 0; }
+      body { padding: 3px 2px; }
+    }
+
+    #headerSection { text-align: center; margin: 4px 0; width: 100%; }
+    #headerLogo {
+      width: 100%; height: 65px; display: block;
+      object-fit: contain; object-position: center;
+      margin: 0 auto; transition: opacity 0.3s;
+    }
+    @media (max-width: 768px) { #headerLogo { height: 52px; } }
+
+    #toggleRow { display: flex; gap: 15px; justify-content: center; align-items: center; margin: 4px auto; }
+    #themeToggle {
+      width: 28px; height: 28px; border: none; border-radius: 50%;
+      background: #333; cursor: pointer; font-size: 14px;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.3s;
+    }
+    body.day-mode #themeToggle { background: #ffd700; }
+    @media (max-width: 768px) {
+      #toggleRow { gap: 12px; }
+      #themeToggle { width: 24px; height: 24px; font-size: 12px; }
+    }
+
+    #pairsWrap { width: 100%; margin: 3px 0; display: flex; align-items: center; gap: 3px; flex-wrap: nowrap; }
+    #pairs { display: flex; gap: 1px; flex-wrap: nowrap; flex: 1; }
+
+    .pair-btn {
+      padding: 4px 2px; border: none; border-radius: 4px;
+      background: #555; color: #fff; cursor: pointer;
+      font-size: 7.5px; font-weight: 600; flex: 1; min-width: 30px;
+      transition: background 0.3s, color 0.3s;
+    }
+    body.day-mode .pair-btn { background: #e0e0e0; color: #000; }
+    .pair-btn.active { background: #000; color: #fff; }
+    @media (max-width: 768px) {
+      .pair-btn { padding: 3px 1px; font-size: 6.5px; min-width: 26px; }
+    }
+
+    #startStopBtn {
+      padding: 0; cursor: pointer; border: none; background: transparent;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    #startStopBtn.stopped { background: transparent; }
+    @media (max-width: 768px) { #startStopBtn { padding: 4px 8px; font-size: 9px; } }
+
+    /* FOTOĞRAF BUTONU İLE START/STOP ARASINDAKİ BOŞLUK ARTIRILDI */
+    #shotBtn { margin-left: 14px; }
+
+    #topbar { display: flex; gap: 3px; margin: 4px 0; align-items: center; flex-wrap: nowrap; position: relative; }
+    #time {
+      background: #000; color: #fff; padding: 3px 6px; border-radius: 3px;
+      font-weight: bold; font-size: 9px; white-space: nowrap; height: 21px;
+      display: flex; align-items: center;
+    }
+    body.day-mode #time { background: #333; }
+    #price {
+      background: #0b57d0; color: #fff; padding: 3px 8px; border-radius: 3px;
+      font-weight: bold; font-size: 10px; text-align: center; white-space: nowrap;
+      height: 21px; display: flex; align-items: center; flex-shrink: 0; margin-left: auto;
+    }
+
+    #tradeResult {
+      flex: 1;
+      margin: 0 3px;
+      height: 21px;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      border-radius: 3px;
+      font-size: 14px;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      color: #fff;
+      white-space: nowrap;
+      padding: 0 8px;
+    }
+    #tradeResult.won { background: #1faa59; display: flex; }
+    #tradeResult.lost { background: #e53935; display: flex; }
+
+    @media (max-width: 768px) {
+      #time { font-size: 8px; padding: 2px 6px; height: 19px; }
+      #price { font-size: 9px; padding: 2px 6px; height: 19px; }
+      #tradeResult { font-size: 12px; height: 19px; }
+      #shotBtn { margin-left: 10px; }
+    }
+
+    #chartContainer { position: relative; width: 100%; }
+    #chart { width: 100%; height: 180px; position: relative; z-index: 2; }
+    @media (max-width: 768px) { #chart { height: 130px; } }
+
+    #chartWatermark {
+      position: absolute; left: 0; top: 50%; transform: translateY(-50%);
+      width: 100%; height: 65px; opacity: 0.18; pointer-events: none;
+      z-index: 1; object-fit: contain; object-position: center; transition: opacity 0.3s;
+    }
+    @media (max-width: 768px) { #chartWatermark { height: 52px; } }
+
+    #xzRowWrap { width: 100%; position: relative; margin-top: 1px; overflow: visible; }
+    #numbersTop {
+      display: flex; flex-wrap: nowrap; justify-content: flex-end;
+      overflow: visible; width: 100%; position: relative; padding: 3px 0;
+    }
+
+    .num-box {
+      flex: 0 0 36px; height: 22px; display: flex;
+      justify-content: center; align-items: center; margin: 1px;
+      color: #fff; font-size: 12px; font-weight: bold;
+      border-radius: 3px; position: relative; overflow: visible;
+    }
+    @media (max-width: 768px) {
+      .num-box { flex: 0 0 28px; height: 18px; font-size: 10px; margin: 0.5px; }
+    }
+
+    .worm-line { position: absolute; height: 1px; border-top: 2px solid; z-index: 5; }
+
+    #sevenLine {
+      position: absolute; width: 2px; background: orange;
+      z-index: 6; pointer-events: none; display: none;
+    }
+
+    .tool-btn {
+      width: 26px; height: 26px; border: none; border-radius: 50%;
+      background: #333; color: #fff; cursor: pointer; padding: 0;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; font-size: 13px; line-height: 1;
+    }
+    body.day-mode .tool-btn { background: #e0e0e0; color: #000; }
+
+    #controlPanel {
+      width: 100%; margin-top: 8px;
+      display: flex; flex-direction: column; align-items: flex-end; gap: 8px;
+    }
+    #tradeRow { display: flex; gap: 16px; align-items: stretch; }
+    .trade-btn {
+      border: none; border-radius: 8px; color: #fff;
+      font-weight: 800; font-size: 14px; letter-spacing: 0.5px;
+      padding: 10px 22px; cursor: pointer;
+      width: 130px;
+      text-align: center;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      white-space: nowrap;
+    }
+    #downBtn { background: linear-gradient(180deg, #ff5a52, #d32f2f); }
+    #upBtn { background: linear-gradient(180deg, #3ddc84, #1faa59); }
+    @media (max-width: 768px) {
+      #tradeRow { gap: 14px; }
+      .trade-btn {
+        font-size: 12.5px;
+        padding: 9px 0;
+        width: 120px;
+      }
+    }
+
+    #pickRow { display: flex; gap: 5px; margin-top: 16px; }
+    .pick-btn {
+      width: 28px; height: 26px; border: 2px solid transparent; border-radius: 5px;
+      background: #ff8c00; color: #1a1a1a; font-weight: 800; font-size: 13px;
+      cursor: pointer; padding: 0;
+    }
+    .pick-btn.active { border-color: #fff; box-shadow: 0 0 0 1px #000; }
+    body.day-mode .pick-btn.active { border-color: #000; box-shadow: 0 0 0 1px #fff; }
+
+    #statsPanel {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 11px; font-weight: 800; padding: 4px 8px;
+      border: 1px solid rgba(255, 140, 0, 0.4); border-radius: 6px;
+      background: #0d0d0d;
+    }
+    body.day-mode #statsPanel { background: #f7f7f7; border-color: rgba(255, 140, 0, 0.55); }
+    .stat-true { color: #2ecc71; }
+    .stat-false { color: #ff4d4d; }
+    #statReset {
+      border: none; border-radius: 4px; background: #555; color: #fff;
+      font-size: 9px; font-weight: 800; padding: 3px 7px; cursor: pointer;
+    }
+    body.day-mode #statReset { background: #ccc; color: #000; }
+
+    .entry-box {
+      position: absolute; border: 2px solid orange; border-radius: 4px;
+      pointer-events: none; z-index: 7; box-sizing: border-box;
+    }
+
+    #loadingIndicator {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: #1a1a1a; display: flex; align-items: center; justify-content: center;
+      z-index: 1000; transition: opacity 0.3s;
+    }
+    .spinner {
+      width: 50px; height: 50px; border: 5px solid #333;
+      border-top: 5px solid #0b57d0; border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+    .performance-mode { transform: translateZ(0); backface-visibility: hidden; perspective: 1000px; }
+    .hw-accelerate { transform: translate3d(0, 0, 0); }
+
+    @media (min-width: 769px) {
+      #topbar { flex-wrap: nowrap; }
+      #price { flex-shrink: 0; }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div id="loadingIndicator"><div class="spinner"></div></div>
+
+  <div id="mainContainer">
+    <div id="leftSection">
+
+      <div id="sevenLine"></div>
+
+      <div id="headerSection">
+        <img id="headerLogo" loading="lazy"
+          src="https://raw.githubusercontent.com/Samday68/Foto-raflar/refs/heads/main/D354DBAF-3EC7-4B5F-ABC1-8EF876797DAA.jpeg"
+          alt="logo" onerror="this.style.display='none';" />
+      </div>
+
+      <div id="toggleRow"><button id="themeToggle">🌙</button></div>
+
+      <div id="pairsWrap">
+        <div id="pairs">
+          <button class="pair-btn active" data-pair="R_100">100</button>
+          <button class="pair-btn" data-pair="R_75">75</button>
+          <button class="pair-btn" data-pair="R_50">50</button>
+          <button class="pair-btn" data-pair="R_25">25</button>
+          <button class="pair-btn" data-pair="R_10">10</button>
+          <button class="pair-btn" data-pair="RDBEAR">BEAR</button>
+          <button class="pair-btn" data-pair="RDBULL">BULL</button>
+        </div>
+
+        <button id="startStopBtn" title="Refresh">
+          <svg width="26" height="26" viewBox="0 0 100 100" style="display:block;">
+            <defs>
+              <radialGradient id="rgOuter" cx="40%" cy="30%" r="70%">
+                <stop offset="0%" stop-color="#ffffff"/>
+                <stop offset="30%" stop-color="#d0d0d0"/>
+                <stop offset="70%" stop-color="#a0a0a0"/>
+                <stop offset="100%" stop-color="#606060"/>
+              </radialGradient>
+              <radialGradient id="rgYellow" cx="38%" cy="32%" r="65%">
+                <stop offset="0%" stop-color="#fff176"/>
+                <stop offset="40%" stop-color="#fdd835"/>
+                <stop offset="80%" stop-color="#f9a825"/>
+                <stop offset="100%" stop-color="#e65100"/>
+              </radialGradient>
+              <radialGradient id="rgInner" cx="40%" cy="30%" r="65%">
+                <stop offset="0%" stop-color="#ffffff" stop-opacity="0.6"/>
+                <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+              </radialGradient>
+            </defs>
+            <circle cx="50" cy="50" r="49" fill="url(#rgOuter)"/>
+            <circle cx="50" cy="50" r="40" fill="url(#rgYellow)"/>
+            <ellipse cx="42" cy="34" rx="16" ry="10" fill="white" opacity="0.35"/>
+            <path d="M50 24 A26 26 0 1 1 27 62" fill="none" stroke="#1a1a1a" stroke-width="11" stroke-linecap="round"/>
+            <polygon points="50,12 37,26 63,26" fill="#1a1a1a"/>
+            <circle cx="50" cy="50" r="49" fill="url(#rgInner)"/>
+          </svg>
+        </button>
+
+        <button id="runBtn" class="tool-btn" title="Stop">
+          <svg width="12" height="12" viewBox="0 0 12 12"><rect x="1.5" y="1" width="3" height="10" fill="currentColor"/><rect x="7.5" y="1" width="3" height="10" fill="currentColor"/></svg>
+        </button>
+
+        <button id="shotBtn" class="tool-btn" title="Ekran görüntüsü">📷</button>
+      </div>
+
+      <div id="topbar">
+        <div id="time">GMT 00:00:00</div>
+        <div id="tradeResult"></div>
+        <div id="price">0.00</div>
+      </div>
+
+      <div id="chartContainer">
+        <img id="chartWatermark" loading="lazy"
+          src="https://raw.githubusercontent.com/Samday68/Foto-raflar/refs/heads/main/D354DBAF-3EC7-4B5F-ABC1-8EF876797DAA.jpeg"
+          alt="" onerror="this.style.display='none';" />
+        <canvas id="chart"></canvas>
+      </div>
+
+      <div id="xzRowWrap"><div id="numbersTop"></div></div>
+
+      <div id="controlPanel">
+
+        <div id="tradeRow">
+          <button id="downBtn" class="trade-btn">▼ DOWN</button>
+          <button id="upBtn" class="trade-btn">▲ UP</button>
+        </div>
+
+        <div id="pickRow">
+          <button class="pick-btn" data-n="3">3</button>
+          <button class="pick-btn" data-n="4">4</button>
+          <button class="pick-btn" data-n="5">5</button>
+          <button class="pick-btn" data-n="6">6</button>
+          <button class="pick-btn" data-n="7">7</button>
+          <button class="pick-btn" data-n="8">8</button>
+          <button class="pick-btn" data-n="9">9</button>
+        </div>
+
+        <div id="statsPanel">
+          <span class="stat-true">TRUE <b id="statTrue">0</b></span>
+          <span class="stat-false">FALSE <b id="statFalse">0</b></span>
+          <button id="statReset" title="İstatistikleri sıfırla">RESET</button>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
+  <script>
+
+    const DISPLAY_COUNT = 20;
+    const SEVEN_SPLIT_COUNT = 7;
+    const LINE_SPAN = 5;
+    const STATS_KEY = 'volAnalyzerStats';
+
+    const LOGO_DARK = 'https://raw.githubusercontent.com/Samday68/Foto-raflar/refs/heads/main/D354DBAF-3EC7-4B5F-ABC1-8EF876797DAA.jpeg';
+    const LOGO_LIGHT = 'https://raw.githubusercontent.com/Samday68/Foto-raflar/refs/heads/main/B3F65E6D-3FB0-45E3-A46A-7E788A46DEC7.jpeg';
+
+    let ws = null;
+    let isRunning = true;
+
+    let prices = [];
+    let decimalDigits = [];
+    let wormLinesTop = [];
+    let numColors = [];
+    let digitGlobalIndex = [];
+    let globalTickCounter = 0;
+
+    let currentPair = 'R_100';
+
+    let trade = null;
+    let selectedN = null;
+    let stats = { t: 0, f: 0 };
+
+    let chart = null;
+
+    let _lastTickRender = 0;
+    let _tickRenderThrottle = 80;
+    let _pendingRender = false;
+
+    let _resultHideTimer = null;
+    let _resultLocked = false;
+
+
+    // =========================
+    // TEMA
+    // =========================
+
+    function updateLogos() {
+      const isDark = !document.body.classList.contains('day-mode');
+      document.getElementById('headerLogo').src = isDark ? LOGO_DARK : LOGO_LIGHT;
+      document.getElementById('chartWatermark').src = isDark ? LOGO_DARK : LOGO_LIGHT;
+    }
+
+    function updateChartColors() {
+      if (!chart) return;
+      const isDark = !document.body.classList.contains('day-mode');
+      const grid = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
+      const txt = isDark ? '#fff' : '#000';
+
+      chart.data.datasets[0].borderColor = txt;
+      chart.data.datasets[0].backgroundColor = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
+      chart.options.scales.y.grid.color = grid;
+      chart.options.scales.x.grid.color = grid;
+      chart.options.scales.y.ticks.color = txt;
+      chart.options.scales.x.ticks.color = txt;
+      chart.update('none');
+    }
+
+    function toggleTheme() {
+      document.body.classList.toggle('day-mode');
+      document.getElementById('themeToggle').innerText =
+        document.body.classList.contains('day-mode') ? '☀️' : '🌙';
+      updateLogos();
+      updateChartColors();
+      positionSevenLine();
+    }
+
+
+    // =========================
+    // WON / LOST GÖSTERGESİ
+    // =========================
+
+    function showTradeResult(text) {
+      const el = document.getElementById('tradeResult');
+      el.classList.remove('won', 'lost');
+      el.classList.add(text === 'WON' ? 'won' : 'lost');
+      el.innerText = text;
+
+      _resultLocked = false;
+
+      if (_resultHideTimer) clearTimeout(_resultHideTimer);
+
+      if (isRunning) {
+        _resultHideTimer = setTimeout(() => {
+          if (_resultLocked) return;
+          el.classList.remove('won', 'lost');
+          el.innerText = '';
+        }, 5000);
+      }
+    }
+
+    function hideTradeResult() {
+      const el = document.getElementById('tradeResult');
+      el.classList.remove('won', 'lost');
+      el.innerText = '';
+      _resultLocked = false;
+      if (_resultHideTimer) { clearTimeout(_resultHideTimer); _resultHideTimer = null; }
+    }
+
+    function lockTradeResult() {
+      if (_resultHideTimer) {
+        clearTimeout(_resultHideTimer);
+        _resultHideTimer = null;
+      }
+      _resultLocked = true;
+    }
+
+
+    // =========================
+    // PAIR SEÇİMİ
+    // =========================
+
+    function selectPair(pair) {
+      currentPair = pair;
+
+      document.querySelectorAll('.pair-btn').forEach(b => b.classList.remove('active'));
+      document.querySelector('.pair-btn[data-pair="' + pair + '"]').classList.add('active');
+
+      if (ws) ws.close();
+
+      prices = [];
+      decimalDigits = [];
+      digitGlobalIndex = [];
+      wormLinesTop = [];
+      numColors = [];
+      trade = null;
+      selectedN = null;
+      hideTradeResult();
+
+      document.getElementById('numbersTop').innerHTML = '';
+
+      positionSevenLine();
+
+      if (isRunning) startWS();
+    }
+
+
+    // =========================
+    // WORM
+    // =========================
+
+    function updateWorm() {
+      if (prices.length < 20) return;
+
+      const l20 = prices.slice(-20);
+      const mx = Math.max(...l20.slice(0, -1));
+      const mn = Math.min(...l20.slice(0, -1));
+      const last = l20[l20.length - 1];
+
+      let c = 'lightgreen';
+      if (last > mx) c = 'blue';
+      else if (last < mn) c = 'red';
+
+      wormLinesTop.push(c);
+      if (wormLinesTop.length > DISPLAY_COUNT) wormLinesTop.shift();
+    }
+
+    function renderWormLines(cid, wa) {
+      requestAnimationFrame(() => {
+        const c = document.getElementById(cid);
+        c.querySelectorAll('.worm-line').forEach(e => e.remove());
+
+        const boxes = c.querySelectorAll('.num-box');
+
+        boxes.forEach((box, idx) => {
+          if (!wa[idx]) return;
+
+          const line = document.createElement('div');
+          line.className = 'worm-line';
+          line.style.width = box.offsetWidth + 'px';
+          line.style.left = box.offsetLeft + 'px';
+          line.style.top = (box.offsetTop + box.offsetHeight + 0.2) + 'px';
+          line.style.borderTopColor = wa[idx];
+
+          c.appendChild(line);
+        });
+      });
+    }
+
+
+    // =========================
+    // SON 7 SAYI AYIRICI SABİT ÇİZGİ
+    // =========================
+
+    function positionSevenLine() {
+      const line = document.getElementById('sevenLine');
+      const row = document.getElementById('numbersTop');
+      const leftSection = document.getElementById('leftSection');
+
+      if (!line || !row || !leftSection) return;
+
+      const boxes = row.querySelectorAll('.num-box');
+
+      if (boxes.length < SEVEN_SPLIT_COUNT) {
+        line.style.display = 'none';
+        return;
+      }
+
+      const targetBox = boxes[boxes.length - SEVEN_SPLIT_COUNT];
+      const overhang = 4;
+
+      const leftRect = leftSection.getBoundingClientRect();
+      const boxRect = targetBox.getBoundingClientRect();
+      const rowRect = row.getBoundingClientRect();
+
+      const x = boxRect.left - leftRect.left;
+      const top = (rowRect.top - leftRect.top) - overhang;
+      const bottom = (rowRect.bottom - leftRect.top) + overhang;
+
+      line.style.display = 'block';
+      line.style.left = x + 'px';
+      line.style.top = top + 'px';
+      line.style.height = (bottom - top) + 'px';
+    }
+
+
+    // =========================
+    // LINE
+    // =========================
+
+    function startTrade(dir) {
+      if (!digitGlobalIndex.length) return;
+
+      const pressGi = digitGlobalIndex[digitGlobalIndex.length - 1];
+
+      trade = {
+        dir: dir,
+        pressGi: pressGi,
+        startGi: pressGi + 2,
+        price: null,
+        result: null,
+        n: null
+      };
+
+      selectedN = null;
+
+      hideTradeResult();
+
+      const row = document.getElementById('numbersTop');
+      if (row) row.querySelectorAll('.entry-box').forEach(e => e.remove());
+
+      if (chart) chart.update('none');
+    }
+
+    function processTrade(gi, price) {
+      if (!trade || trade.result) return;
+
+      if (gi === trade.startGi) {
+        trade.price = price;
+        return;
+      }
+
+      if (gi === trade.startGi + LINE_SPAN && trade.price !== null) {
+        const won =
+          trade.dir === 'up'
+          ? price > trade.price
+          : price < trade.price;
+
+        trade.result = won ? 'WON' : 'LOST';
+
+        if (won) stats.t++;
+        else stats.f++;
+
+        saveStats();
+        renderStats();
+
+        showTradeResult(trade.result);
+      }
+    }
+
+    function renderEntryBox() {
+      const row = document.getElementById('numbersTop');
+      if (!row) return;
+
+      row.querySelectorAll('.entry-box').forEach(e => e.remove());
+
+      if (!trade || !trade.n) return;
+
+      const boxes = row.querySelectorAll('.num-box');
+      if (!boxes.length) return;
+
+      const giS = digitGlobalIndex.slice(-DISPLAY_COUNT);
+      const firstGi = giS[0];
+
+      const e = trade.pressGi - firstGi;
+      let s = trade.pressGi - trade.n + 1 - firstGi;
+
+      if (e < 0) return;
+      if (s < 0) s = 0;
+
+      const bs = boxes[s];
+      const be = boxes[e];
+      if (!bs || !be) return;
+
+      const V_PAD = 9;
+      const H_PAD = 2;
+
+      const el = document.createElement('div');
+      el.className = 'entry-box';
+      el.style.left = (bs.offsetLeft - H_PAD) + 'px';
+      el.style.top = (bs.offsetTop - V_PAD) + 'px';
+      el.style.width = (be.offsetLeft + be.offsetWidth - bs.offsetLeft + H_PAD * 2) + 'px';
+      el.style.height = (bs.offsetHeight + V_PAD * 2) + 'px';
+
+      row.appendChild(el);
+    }
+
+
+    // =========================
+    // İSTATİSTİK
+    // =========================
+
+    function loadStats() {
+      try {
+        const raw = localStorage.getItem(STATS_KEY);
+        if (raw) {
+          const o = JSON.parse(raw);
+          stats.t = parseInt(o.t, 10) || 0;
+          stats.f = parseInt(o.f, 10) || 0;
+        }
+      } catch (e) {}
+    }
+
+    function saveStats() {
+      try {
+        localStorage.setItem(STATS_KEY, JSON.stringify(stats));
+      } catch (e) {}
+    }
+
+    function renderStats() {
+      document.getElementById('statTrue').innerText = stats.t;
+      document.getElementById('statFalse').innerText = stats.f;
+    }
+
+
+    // =========================
+    // START / STOP
+    // =========================
+
+    function updateRunBtn() {
+      const b = document.getElementById('runBtn');
+
+      b.innerHTML = isRunning
+        ? '<svg width="12" height="12" viewBox="0 0 12 12"><rect x="1.5" y="1" width="3" height="10" fill="currentColor"/><rect x="7.5" y="1" width="3" height="10" fill="currentColor"/></svg>'
+        : '<svg width="12" height="12" viewBox="0 0 12 12"><polygon points="2,1 11,6 2,11" fill="#2ecc71"/></svg>';
+
+      b.title = isRunning ? 'Stop' : 'Start';
+    }
+
+    function resetView() {
+      prices = [];
+      decimalDigits = [];
+      digitGlobalIndex = [];
+      wormLinesTop = [];
+      numColors = [];
+      trade = null;
+      selectedN = null;
+      hideTradeResult();
+
+      document.getElementById('numbersTop').innerHTML = '';
+
+      positionSevenLine();
+
+      if (chart) {
+        chart.data.datasets[0].data = Array(DISPLAY_COUNT).fill(null);
+        chart.data.labels =
+          Array.from({ length: DISPLAY_COUNT }, (_, i) => (i + 1).toString());
+        chart.update('none');
+      }
+
+      document.getElementById('price').innerText = '0.00';
+      document.getElementById('price').style.background = '#0b57d0';
+    }
+
+    function toggleRun() {
+      isRunning = !isRunning;
+
+      if (!isRunning) {
+        lockTradeResult();
+
+        if (ws) {
+          try { ws.close(); } catch (e) {}
+        }
+      } else {
+        _resultLocked = false;
+        resetView();
+        startWS();
+      }
+
+      updateRunBtn();
+    }
+
+
+    // =========================
+    // EKRAN GÖRÜNTÜSÜ
+    // =========================
+
+    async function takeScreenshot() {
+      if (typeof html2canvas === 'undefined') {
+        console.error('html2canvas yüklenemedi');
+        return;
+      }
+
+      try {
+        const isDark = !document.body.classList.contains('day-mode');
+
+        const canvas = await html2canvas(
+          document.getElementById('leftSection'),
+          {
+            useCORS: true,
+            backgroundColor: isDark ? '#1a1a1a' : '#ffffff',
+            scale: window.devicePixelRatio || 1
+          }
+        );
+
+        canvas.toBlob(async blob => {
+
+          if (!blob) return;
+
+          const name = 'screenshot_' + Date.now() + '.png';
+
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = name;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          setTimeout(() => URL.revokeObjectURL(url), 4000);
+
+        }, 'image/png');
+
+      } catch (err) {
+        console.error('Ekran görüntüsü hatası:', err);
+      }
+    }
+
+
+    function _scheduleRender() {
+      if (_pendingRender) return;
+      _pendingRender = true;
+
+      const elapsed = Date.now() - _lastTickRender;
+      const delay = Math.max(0, _tickRenderThrottle - elapsed);
+
+      setTimeout(() => {
+        _pendingRender = false;
+        _lastTickRender = Date.now();
+
+        renderWormLines('numbersTop', wormLinesTop.slice(-DISPLAY_COUNT));
+        positionSevenLine();
+      }, delay);
+    }
+
+
+    // =========================
+    // DERIV WEBSOCKET
+    // =========================
+
+    function startWS() {
+
+      if (ws) {
+        try { ws.close(); } catch (e) {}
+      }
+
+      ws = new WebSocket('wss://api.derivws.com/trading/v1/options/ws/public');
+
+      ws.onopen = () => {
+        console.log('Deriv Public WebSocket bağlantısı kuruldu');
+
+        ws.send(JSON.stringify({
+          ticks_history: currentPair,
+          end: 'latest',
+          count: DISPLAY_COUNT,
+          style: 'ticks'
+        }));
+
+        ws.send(JSON.stringify({
+          ticks: currentPair,
+          subscribe: 1
+        }));
+      };
+
+
+      ws.onmessage = msg => {
+
+        let d;
+
+        try {
+          d = JSON.parse(msg.data);
+        } catch (e) {
+          console.error('JSON parse hatası:', e);
+          return;
+        }
+
+
+        if (d.history && d.history.prices) {
+
+          d.history.prices.forEach(p => {
+
+            const ps = String(p);
+            const pr = parseFloat(p);
+
+            prices.push(pr);
+            if (prices.length > 200) prices.shift();
+
+            const parts = ps.split('.');
+            let dp = parts[1] || '0';
+            if (dp.length === 1) dp += '0';
+
+            const ld = dp.charAt(dp.length - 1) || '0';
+
+            decimalDigits.push(ld);
+            if (decimalDigits.length > 200) decimalDigits.shift();
+
+            digitGlobalIndex.push(globalTickCounter++);
+            if (digitGlobalIndex.length > 200) digitGlobalIndex.shift();
+
+            updateWorm();
+          });
+
+        }
+
+
+        if (d.tick) {
+
+          const ps = String(d.tick.quote);
+          const pr = parseFloat(d.tick.quote);
+
+          prices.push(pr);
+          if (prices.length > DISPLAY_COUNT) prices.shift();
+
+          const parts = ps.split('.');
+          const ip = parts[0];
+          let dp = parts[1] || '0';
+          if (dp.length === 1) dp += '0';
+
+          const ld = dp.charAt(dp.length - 1) || '0';
+
+          decimalDigits.push(ld);
+          if (decimalDigits.length > DISPLAY_COUNT) decimalDigits.shift();
+
+          digitGlobalIndex.push(globalTickCounter++);
+          if (digitGlobalIndex.length > DISPLAY_COUNT) digitGlobalIndex.shift();
+
+          updateWorm();
+
+          const pe = document.getElementById('price');
+
+          pe.innerText = ip + (dp && dp !== '00' ? ',' + dp : ',00');
+
+          if (prices.length > 1) {
+            const prev = prices[prices.length - 2];
+
+            if (pr > prev) pe.style.background = 'blue';
+            else if (pr < prev) pe.style.background = 'red';
+            else pe.style.background = '#0b57d0';
+          }
+
+          processTrade(digitGlobalIndex[digitGlobalIndex.length - 1], pr);
+
+        }
+
+
+        const row = document.getElementById('numbersTop');
+        row.innerHTML = '';
+        numColors = [];
+
+        const sa = decimalDigits.slice(-DISPLAY_COUNT);
+        const frag = document.createDocumentFragment();
+
+        for (let i = 0; i < sa.length; i++) {
+
+          const gi = decimalDigits.length - DISPLAY_COUNT + i;
+
+          const up = gi > 0 && prices[gi] > prices[gi - 1];
+          const dn = gi > 0 && prices[gi] < prices[gi - 1];
+
+          const c = up ? 'blue' : (dn ? 'red' : '#666');
+
+          numColors.push(c);
+
+          const box = document.createElement('div');
+          box.className = 'num-box';
+          box.style.background = c;
+          box.innerText = sa[i] || '0';
+
+          frag.appendChild(box);
+        }
+
+        row.appendChild(frag);
+
+        renderEntryBox();
+
+        requestAnimationFrame(positionSevenLine);
+
+
+        const lN = prices.slice(-DISPLAY_COUNT);
+
+        if (chart) {
+
+          chart.data.datasets[0].data = lN;
+
+          chart.data.datasets[0].pointBackgroundColor =
+            lN.map((p, i) => {
+              if (i === 0) return 'gray';
+              if (p > lN[i - 1]) return 'blue';
+              if (p < lN[i - 1]) return 'red';
+              return 'gray';
+            });
+
+          chart.data.datasets[0].pointBorderColor =
+            Array(lN.length).fill('transparent');
+
+          chart.data.labels =
+            Array.from({ length: lN.length }, (_, i) => (i + 1).toString());
+
+          chart.update('none');
+
+        }
+
+        _scheduleRender();
+
+      };
+
+
+      ws.onerror = error => {
+        console.error('Deriv WebSocket hatası:', error);
+      };
+
+      ws.onclose = () => {
+        console.log('Deriv WebSocket bağlantısı kapandı');
+      };
+
+    }
+
+
+    // =========================
+    // GMT
+    // =========================
+
+    function updateTime() {
+      const now = new Date();
+
+      document.getElementById('time').innerText =
+        'GMT ' +
+        now.getUTCHours().toString().padStart(2, '0') + ':' +
+        now.getUTCMinutes().toString().padStart(2, '0') + ':' +
+        now.getUTCSeconds().toString().padStart(2, '0');
+    }
+
+
+    // =========================
+    // CHART
+    // =========================
+
+    function initChart() {
+
+      const ctx = document.getElementById('chart').getContext('2d');
+
+      chart = new Chart(ctx, {
+
+        type: 'line',
+
+        data: {
+          labels: Array.from({ length: DISPLAY_COUNT }, (_, i) => (i + 1).toString()),
+          datasets: [{
+            data: Array(DISPLAY_COUNT).fill(null),
+            borderColor: '#fff',
+            borderWidth: 1.5,
+            backgroundColor: 'rgba(255,255,255,0.05)',
+            pointBackgroundColor: Array(DISPLAY_COUNT).fill('#fff'),
+            pointRadius: 2,
+            pointHoverRadius: 3
+          }]
+        },
+
+        options: {
+          plugins: {
+            legend: { display: false },
+            tooltip: { enabled: false }
+          },
+          scales: {
+            y: {
+              beginAtZero: false,
+              grid: { color: 'rgba(255,255,255,0.1)' },
+              ticks: { color: '#fff' }
+            },
+            x: {
+              grid: { color: 'rgba(255,255,255,0.1)' },
+              ticks: { color: '#fff' }
+            }
+          },
+          animation: false,
+          maintainAspectRatio: false
+        },
+
+        plugins: [{
+
+          afterDatasetsDraw(ci) {
+
+            const ctx = ci.ctx;
+            const meta = ci.getDatasetMeta(0);
+            const isDark = !document.body.classList.contains('day-mode');
+
+            const decs = decimalDigits.slice(-DISPLAY_COUNT);
+            const colors = numColors.slice(-DISPLAY_COUNT);
+            const worms = wormLinesTop.slice(-DISPLAY_COUNT);
+
+            ctx.font = '900 15px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'bottom';
+
+            meta.data.forEach((pt, i) => {
+
+              const t = decs[i] || '';
+
+              if (pt && pt.x !== undefined) {
+
+                let fc = colors[i] || '#000';
+                if (fc === 'blue') fc = '#6A9FFF';
+
+                ctx.fillStyle = fc;
+                ctx.fillText(t, pt.x, pt.y - 2);
+
+                const wc = worms[i];
+
+                if (wc === 'blue' || wc === 'red') {
+                  ctx.strokeStyle = wc;
+                  ctx.lineWidth = 2;
+                  ctx.beginPath();
+                  ctx.moveTo(pt.x - 5, pt.y - 2);
+                  ctx.lineTo(pt.x + 5, pt.y - 2);
+                  ctx.stroke();
+                }
+
+              }
+
+            });
+
+            const last = meta.data[meta.data.length - 1];
+
+            if (last && last.x !== undefined) {
+              ctx.strokeStyle = isDark ? '#40E0D0' : '#000';
+              ctx.lineWidth = 0.5;
+              ctx.beginPath();
+              ctx.moveTo(ci.scales.x.left, last.y);
+              ctx.lineTo(last.x, last.y);
+              ctx.stroke();
+            }
+
+
+            const giS = digitGlobalIndex.slice(-DISPLAY_COUNT);
+
+            if (trade && giS.length && meta.data.length) {
+
+              const firstGi = giS[0];
+              const lastGi = giS[giS.length - 1];
+
+              if (trade.startGi + LINE_SPAN < firstGi) {
+
+                trade = null;
+
+              } else if (trade.price !== null) {
+
+                const sIdx = Math.max(0, trade.startGi - firstGi);
+                const eIdx = Math.min(trade.startGi + LINE_SPAN, lastGi) - firstGi;
+
+                const a = meta.data[sIdx];
+                const b = meta.data[eIdx];
+
+                if (a && b) {
+
+                  const y = ci.scales.y.getPixelForValue(trade.price);
+
+                  ctx.save();
+                  ctx.strokeStyle = 'orange';
+                  ctx.lineWidth = 2;
+                  ctx.beginPath();
+                  ctx.moveTo(a.x - 6, y);
+                  ctx.lineTo(b.x + 6, y);
+                  ctx.stroke();
+                  ctx.restore();
+
+                }
+
+              }
+
+            }
+
+          }
+
+        }]
+
+      });
+
+    }
+
+
+    // =========================
+    // BAŞLANGIÇ
+    // =========================
+
+    document.addEventListener('DOMContentLoaded', () => {
+
+      setTimeout(() => {
+        const li = document.getElementById('loadingIndicator');
+        li.style.opacity = '0';
+        setTimeout(() => { li.style.display = 'none'; }, 300);
+      }, 1000);
+
+      initChart();
+      positionSevenLine();
+
+      document.querySelectorAll('.num-box,#chartContainer').forEach(el =>
+        el.classList.add('performance-mode', 'hw-accelerate')
+      );
+
+      document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+
+      document.getElementById('downBtn').addEventListener('click', () => startTrade('down'));
+      document.getElementById('upBtn').addEventListener('click', () => startTrade('up'));
+
+      document.querySelectorAll('.pick-btn').forEach(btn =>
+        btn.addEventListener('click', function () {
+          const n = parseInt(this.getAttribute('data-n'), 10);
+          selectedN = n;
+
+          document.querySelectorAll('.pick-btn').forEach(b => b.classList.remove('active'));
+
+          if (trade && (!trade.result || !isRunning)) {
+            trade.n = n;
+            renderEntryBox();
+          }
+        })
+      );
+
+      loadStats();
+      renderStats();
+
+      document.getElementById('statReset').addEventListener('click', () => {
+        stats = { t: 0, f: 0 };
+        saveStats();
+        renderStats();
+      });
+
+      document.getElementById('runBtn').addEventListener('click', toggleRun);
+      document.getElementById('shotBtn').addEventListener('click', takeScreenshot);
+      updateRunBtn();
+
+
+      document.getElementById('startStopBtn').addEventListener('click', () => {
+
+        prices = [];
+        decimalDigits = [];
+        digitGlobalIndex = [];
+        wormLinesTop = [];
+        numColors = [];
+        trade = null;
+        selectedN = null;
+        hideTradeResult();
+
+        document.getElementById('numbersTop').innerHTML = '';
+
+        positionSevenLine();
+
+        if (chart) {
+          chart.data.datasets[0].data = Array(DISPLAY_COUNT).fill(null);
+          chart.data.labels =
+            Array.from({ length: DISPLAY_COUNT }, (_, i) => (i + 1).toString());
+          chart.update('none');
+        }
+
+        document.getElementById('price').innerText = '0.00';
+        document.getElementById('price').style.background = '#0b57d0';
+
+        if (ws) {
+          try { ws.close(); } catch (e) {}
+        }
+
+        if (isRunning) startWS();
+
+      });
+
+
+      setInterval(() => {
+
+        if (prices.length > 100) prices.splice(0, prices.length - 100);
+        if (decimalDigits.length > 100) decimalDigits.splice(0, decimalDigits.length - 100);
+        if (digitGlobalIndex.length > 100) digitGlobalIndex.splice(0, digitGlobalIndex.length - 100);
+        if (numColors.length > 100) numColors.splice(0, numColors.length - 100);
+        if (wormLinesTop.length > 100) wormLinesTop.splice(0, wormLinesTop.length - 100);
+
+      }, 300000);
+
+
+      document.querySelectorAll('.pair-btn').forEach(btn =>
+        btn.addEventListener('click', function () {
+          selectPair(this.getAttribute('data-pair'));
+        })
+      );
+
+      setInterval(updateTime, 1000);
+      updateTime();
+
+      startWS();
+
+      updateLogos();
+
+      window.addEventListener('resize', () => { positionSevenLine(); renderEntryBox(); });
+
+      if ('serviceWorker' in navigator)
+        window.addEventListener('load', () =>
+          navigator.serviceWorker
+            .register('/service-worker.js')
+            .then(r => console.log('SW:', r.scope))
+            .catch(e => console.log('SW fail:', e))
+        );
+
+
+      let _wl = null;
+
+      function _rwl() {
+        if ('wakeLock' in navigator)
+          navigator.wakeLock.request('screen')
+            .then(wl => {
+              _wl = wl;
+              wl.addEventListener('release', () => setTimeout(_rwl, 1000));
+            })
+            .catch(() => {});
+      }
+
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+          _rwl();
+          if (isRunning && (!ws || ws.readyState !== WebSocket.OPEN)) startWS();
+        }
+      });
+
+      document.addEventListener('click', function ia() { _rwl(); }, { once: true });
+
+    });
+
+  </script>
+
+</body>
+</html>
