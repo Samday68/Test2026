@@ -265,7 +265,7 @@
       <div id="sevenLine"></div>
 
       <div id="headerSection">
-        <img id="headerLogo" loading="lazy"
+        <img id="headerLogo" crossorigin="anonymous" loading="lazy"
           src="https://raw.githubusercontent.com/Samday68/Foto-raflar/refs/heads/main/D354DBAF-3EC7-4B5F-ABC1-8EF876797DAA.jpeg"
           alt="logo" onerror="this.style.display='none';" />
       </div>
@@ -326,7 +326,7 @@
       </div>
 
       <div id="chartContainer">
-        <img id="chartWatermark" loading="lazy"
+        <img id="chartWatermark" crossorigin="anonymous" loading="lazy"
           src="https://raw.githubusercontent.com/Samday68/Foto-raflar/refs/heads/main/D354DBAF-3EC7-4B5F-ABC1-8EF876797DAA.jpeg"
           alt="" onerror="this.style.display='none';" />
         <canvas id="chart"></canvas>
@@ -767,32 +767,57 @@
 
     async function takeScreenshot() {
       if (typeof html2canvas === 'undefined') {
-        console.error('html2canvas yüklenemedi');
+        alert('html2canvas yüklenemedi. İnternet bağlantını kontrol et.');
         return;
       }
 
+      const isDark = !document.body.classList.contains('day-mode');
+      const target = document.getElementById('leftSection');
+
+      const baseOpts = {
+        useCORS: true,
+        backgroundColor: isDark ? '#1a1a1a' : '#ffffff',
+        scale: window.devicePixelRatio || 1,
+        scrollX: 0,
+        scrollY: -window.scrollY
+      };
+
+      let canvas = null;
+
       try {
-        const isDark = !document.body.classList.contains('day-mode');
-
-        const canvas = await html2canvas(
-          document.getElementById('leftSection'),
-          {
-            useCORS: true,
-            backgroundColor: isDark ? '#1a1a1a' : '#ffffff',
-            scale: window.devicePixelRatio || 1
-          }
-        );
-
-        canvas.toBlob(blob => {
-          if (!blob) return;
-          showShotPreview(blob);
-        }, 'image/png');
-
+        canvas = await html2canvas(target, baseOpts);
       } catch (err) {
-        console.error('Ekran görüntüsü hatası:', err);
+        console.error('Ekran görüntüsü hatası (1):', err);
       }
-    }
 
+      // Logo yüzünden başarısız olursa logolar olmadan tekrar dene
+      if (!canvas) {
+        try {
+          canvas = await html2canvas(target, Object.assign({}, baseOpts, {
+            ignoreElements: el => el.tagName === 'IMG'
+          }));
+        } catch (err) {
+          alert('Ekran görüntüsü alınamadı: ' + (err && err.message ? err.message : err));
+          return;
+        }
+      }
+
+      canvas.toBlob(blob => {
+        if (blob) {
+          showShotPreview(blob);
+          return;
+        }
+        // Blob alınamazsa (tainted canvas) logosuz tekrar dene
+        html2canvas(target, Object.assign({}, baseOpts, {
+          ignoreElements: el => el.tagName === 'IMG'
+        })).then(c2 => {
+          c2.toBlob(b2 => {
+            if (b2) showShotPreview(b2);
+            else alert('Görüntü oluşturulamadı.');
+          }, 'image/png');
+        }).catch(err => alert('Hata: ' + (err && err.message ? err.message : err)));
+      }, 'image/png');
+    }
 
 
     // Önizleme penceresi: "KAYDET" tuşuna yeni bir dokunuşla paylaşım menüsü açılır
